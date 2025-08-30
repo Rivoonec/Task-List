@@ -32,8 +32,7 @@ func deleteTask(num int, taskList []string) []string {
 				return taskList
 			}
 		}
-		fmt.Printf("Не нашли такую задачу.\nПовторите ввод.\n")
-		fmt.Println("Введите номер задачи, которую хотите удалить.")
+		fmt.Printf("Не нашли такую задачу.\nПовторите ввод.\nВведите номер задачи, которую хотите удалить.\n")
 		num = getNum()
 	}
 }
@@ -59,8 +58,7 @@ func updateTask(num int, taskList []string) []string {
 				}
 			}
 		}
-		fmt.Printf("Не нашли такую задачу.\nПовторите ввод.\n")
-		fmt.Println("Введите номер задачи, которую хотите изменить.")
+		fmt.Printf("Не нашли такую задачу.\nПовторите ввод.\nВведите номер задачи, которую хотите изменить.\n")
 		num = getNum()
 	}
 }
@@ -76,8 +74,9 @@ func hello(taskList []string) {
 	fmt.Printf("\nДобро пожаловать в терминал взаимодействия со списком дел.\nВзаимодействуй с терминалом через ввод цифр.\n\n")
 	fmt.Printf("1. Посмотри список дел.\n")
 	fmt.Printf("2. Перейти в меню редактирования задач.( Имя задачи >= 3 символов)\n")
-	fmt.Printf("3. Ещё раз открыть инструкцию.\n")
-	fmt.Printf("4. Закрыть терминал.\n\n")
+	fmt.Printf("3. Сохранить изменения в файле.\n")
+	fmt.Printf("4. Ещё раз открыть инструкцию.\n")
+	fmt.Printf("5. Закрыть терминал.\n\n")
 	readTaskList(taskList)
 }
 
@@ -107,7 +106,7 @@ func getNum() (num int) {
 
 		num, err = strconv.Atoi(input)
 		if err != nil {
-			fmt.Println("Ошибка конвертации строки:", err)
+			fmt.Fprintln(os.Stderr, "Ошибка конвертации строк:", err)
 			fmt.Println("Попробуйте ещё раз.")
 			continue
 		}
@@ -192,9 +191,15 @@ outerloop:
 					fmt.Println("Неверная команда.\nПопробуй ещё раз.\nВозвращаю в главное меню.")
 				}
 			}
+
 		case 3:
-			hello(taskList)
+			err = saveToFile(taskList)
+			if err != nil {
+				fmt.Println("Ошибка сохранения файла: ", err)
+			}
 		case 4:
+			hello(taskList)
+		case 5:
 			fmt.Println("Пока-пока")
 			break outerloop
 		default:
