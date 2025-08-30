@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 	"unicode/utf8"
 )
 
@@ -152,6 +154,20 @@ func main() {
 		fmt.Println("Ошибка загрузки: ", err)
 		return
 	}
+	// Спасибо DeepSeek за контрибьют Kappa
+	// Создаем канал для перехвата сигналов ОС
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+	// Запускаем горутину для обработки сигналов
+	go func() {
+		<-sigChan // Ждем сигнал
+		fmt.Println("\nПолучен сигнал завершения. Сохраняем данные...")
+		if err := saveToFile(taskList); err != nil {
+			fmt.Println("Ошибка сохранения файла: ", err)
+		}
+		os.Exit(0)
+	}()
 
 	hello(taskList)
 
