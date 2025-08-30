@@ -2,163 +2,208 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
-	"os"
 	"io"
+	"os"
+	"strconv"
+	"strings"
 	"unicode/utf8"
 )
 
-func createTask(task string)() {
+func createTask(task string, taskList []string) []string {
 	if task == "" || utf8.RuneCountInString(task) <= 3 {
-		fmt.Println("Имя задачи должно быть не менее трёх символов.") 
-		return 
+		fmt.Println("Имя задачи должно быть не менее трёх символов.")
+		return taskList
 	}
 
 	taskList = append(taskList, task)
-	return
+	fmt.Println("Добавил задачу.")
+	return taskList
 }
 
-func deleteTask(task string)() {
-	if task == "" || utf8.RuneCountInString(task) < 3 {
-		fmt.Println("Ошибка ввода или имя менее трёх символов.")
-		return
-	}
-	for index, value := range taskList {
-		if value == task {
-			taskList = append(taskList[:index], taskList[index + 1:]...)
-			fmt.Printf("Удалили задачу %v .\n", task)
-			return
-		}
-	}
-	fmt.Printf("Не нашли такую задачу.\nПовторите ввод.\n")
-	input, err := reader.ReadString('\n')
-		if err != nil && err != io.EOF {
-    		fmt.Fprintln(os.Stderr, "Ошибка ввода:", err)
-   			os.Exit(1)
-		}
-	deleteTask(input)	
-	return
-}
-
-func updateTask(task string)() {
-	if task == "" || utf8.RuneCountInString(task) < 3 {
-		fmt.Println("Ошибка ввода или имя менее трёх символов.")
-		return
-	}
-	
-	for index, value := range taskList {
-		if value == task {
-			fmt.Println("Нашёл задачу.\nВведите новое имя.")
-			input, err := reader.ReadString('\n')
-			if err != nil && err != io.EOF {
-    			fmt.Fprintln(os.Stderr, "Ошибка ввода:", err)
-   				os.Exit(1)
-			}
-			if utf8.RuneCountInString(input) >= 3 || input != "" {
-				taskList[index] = input
-				return
-			} else {
-				fmt.Println("Ошибка ввода или имя менее трёх символов.")
-				updateTask(task)
-				return
+func deleteTask(num int, taskList []string) []string {
+	for {
+		num = num - 1
+		for index := range taskList {
+			if index == num {
+				taskList = append(taskList[:index], taskList[index+1:]...)
+				fmt.Printf("Удалили задачу номер %v .\n", num)
+				return taskList
 			}
 		}
+		fmt.Printf("Не нашли такую задачу.\nПовторите ввод.\n")
+		fmt.Println("Введите номер задачи, которую хотите удалить.")
+		num = getNum()
 	}
-	fmt.Printf("Не нашли такую задачу.\nПовторите ввод.\n")
-	input, err := reader.ReadString('\n')
-		if err != nil && err != io.EOF {
-    		fmt.Fprintln(os.Stderr, "Ошибка ввода:", err)
-   			os.Exit(1)
-		}
-	updateTask(input)	
-	return
 }
 
-func readTaskList()() {
+func updateTask(num int, taskList []string) []string {
+	for {
+		num = num - 1
+		for index := range taskList {
+			if index == num {
+				for {
+					fmt.Println("Нашёл задачу.\nВведите новое имя.")
+					input, err := reader.ReadString('\n')
+					if err != nil && err != io.EOF {
+						fmt.Fprintln(os.Stderr, "Ошибка ввода:", err)
+						continue
+					}
+					if utf8.RuneCountInString(input) >= 3 || input != "" {
+						taskList[index] = input
+						return taskList
+					} else {
+						fmt.Println("Ошибка ввода или имя менее трёх символов.")
+					}
+				}
+			}
+		}
+		fmt.Printf("Не нашли такую задачу.\nПовторите ввод.\n")
+		fmt.Println("Введите номер задачи, которую хотите изменить.")
+		num = getNum()
+	}
+}
+
+func readTaskList(taskList []string) {
 	fmt.Println("Список задач:")
 	for index, value := range taskList {
-		fmt.Printf("№%v. %v\n", index, value)
+		fmt.Printf("№%v. %v\n", index+1, value)
 	}
 }
 
-func hello()() {
-	fmt.Printf("\n\nДобро пожаловать в терминал взаимодействия со списком дел.\nВзаимодействуй с терминалом через ввод цифр.\n\n")
-	fmt.Printf("1. Посмотри список дел.\n\n")
-	fmt.Printf("2. Перейти в меню редактирования задач.( Имя задачи >= 3 символов)\n\n")
-	fmt.Printf("3. Ещё раз открыть инструкцию.\n\n")
+func hello(taskList []string) {
+	fmt.Printf("\nДобро пожаловать в терминал взаимодействия со списком дел.\nВзаимодействуй с терминалом через ввод цифр.\n\n")
+	fmt.Printf("1. Посмотри список дел.\n")
+	fmt.Printf("2. Перейти в меню редактирования задач.( Имя задачи >= 3 символов)\n")
+	fmt.Printf("3. Ещё раз открыть инструкцию.\n")
 	fmt.Printf("4. Закрыть терминал.\n\n")
-	readTaskList()
+	readTaskList(taskList)
 }
 
-func getMenuChoice()( int) {
+func getMenuChoice() int {
 	fmt.Print(">")
-	r, _, _ :=reader.ReadRune()
+	r, _, _ := reader.ReadRune()
 
 	if reader.Buffered() > 0 {
 		reader.Discard(reader.Buffered())
 	}
 
 	if r >= '0' && r <= '9' {
-		return int(r -'0')
+		return int(r - '0')
 	}
 	return -1
 }
+
+func getNum() (num int) {
+	for {
+		input, err := reader.ReadString('\n')
+		if err != nil && err != io.EOF {
+			fmt.Fprintln(os.Stderr, "Ошибка ввода:", err)
+			fmt.Println("Попробуйте ещё раз.")
+			continue
+		}
+		input = strings.TrimSpace(input)
+
+		num, err = strconv.Atoi(input)
+		if err != nil {
+			fmt.Println("Ошибка конвертации строки:", err)
+			fmt.Println("Попробуйте ещё раз.")
+			continue
+		}
+		return num
+	}
+}
+
+func saveToFile(taskList []string) error {
+	data, err := json.Marshal(taskList)
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile("list.json", data, 0644)
+}
+
+func loadFromFile() ([]string, error) {
+	data, err := os.ReadFile("list.json")
+	if err != nil {
+		if os.IsNotExist(err) {
+			return []string{}, nil
+		}
+		return nil, err
+	}
+
+	var todos []string
+	err = json.Unmarshal(data, &todos)
+	if err != nil {
+		return nil, err
+	}
+
+	return todos, nil
+}
+
 var (
-	taskList [] string
 	reader = bufio.NewReader(os.Stdin)
 )
 
 func main() {
-	hello()
-	outerloop:
+
+	taskList, err := loadFromFile()
+	if err != nil {
+		fmt.Println("Ошибка загрузки: ", err)
+		return
+	}
+
+	hello(taskList)
+
+outerloop:
 	for {
 		fmt.Println("Ожидаю команды...\nЧтобы открыть инструкцию нажми 3.")
 
-		switch selektorMenu:= getMenuChoice(); selektorMenu {
+		switch selektorMenu := getMenuChoice(); selektorMenu {
 		case 1:
-			readTaskList()
+			readTaskList(taskList)
 		case 2:
-			fmt.Println("1. Добавить задачу.\n2. Удалить задачу.\n3. Изменить задачу.\n4. Выйти в главное меню.")
+		loop:
+			for {
+				fmt.Println("1. Добавить задачу.\n2. Удалить задачу.\n3. Изменить задачу.\n4. Выйти в главное меню.")
 
-			switch selektorPodMenu:= getMenuChoice(); selektorPodMenu {
-			case 1:
-				fmt.Println("Введите задачу.")
-				input, err := reader.ReadString('\n')
-				if err != nil && err != io.EOF {
-    				fmt.Fprintln(os.Stderr, "Ошибка ввода:", err)
-   					os.Exit(1)
+				switch selektorPodMenu := getMenuChoice(); selektorPodMenu {
+				case 1:
+					fmt.Println("Введите задачу.")
+					input, err := reader.ReadString('\n')
+					if err != nil && err != io.EOF {
+						fmt.Fprintln(os.Stderr, "Ошибка ввода:", err)
+						os.Exit(1)
+					}
+					taskList = createTask(input, taskList)
+				case 2:
+
+					fmt.Println("Введите номер задачи, которую хотите удалить.")
+					num := getNum()
+					taskList = deleteTask(num, taskList)
+				case 3:
+					fmt.Println("Введите имя задачи, которую хотите изменить.")
+					num := getNum()
+					taskList = updateTask(num, taskList)
+				case 4:
+					break loop
+				default:
+					fmt.Println("Неверная команда.\nПопробуй ещё раз.\nВозвращаю в главное меню.")
 				}
-				createTask(input)
-			case 2:
-				fmt.Println("Введите имя задачи, которую хотите удалить.")
-				input, err := reader.ReadString('\n')
-				if err != nil && err != io.EOF {
-    				fmt.Fprintln(os.Stderr, "Ошибка ввода:", err)
-   					os.Exit(1)
-				}
-				deleteTask(input)
-			case 3:
-				fmt.Println("Введите имя задачи, которую хотите изменить.")
-				input, err := reader.ReadString('\n')
-				if err != nil && err != io.EOF {
-    				fmt.Fprintln(os.Stderr, "Ошибка ввода:", err)
-   					os.Exit(1)
-				}
-				updateTask(input)
-			case 4:
-				break
-			default:
-				fmt.Println("Неверная команда.\nПопробуй ещё раз.\nВозвращаю в главное меню.")
-				break
-			}			
+			}
 		case 3:
-			hello()
+			hello(taskList)
 		case 4:
 			fmt.Println("Пока-пока")
 			break outerloop
 		default:
 			fmt.Println("Неверная команда.\nПопробуй ещё разок.")
-			hello()
+			hello(taskList)
 		}
+	}
+	err = saveToFile(taskList)
+	if err != nil {
+		fmt.Println("Ошибка сохранения файла: ", err)
 	}
 }
