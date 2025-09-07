@@ -13,18 +13,23 @@ import (
 	"unicode/utf8"
 )
 
-func createTask(task string, taskList []string) []string {
-	if task == "" || utf8.RuneCountInString(task) <= 3 {
+type Task struct {
+	Task   string `json:"task"`
+	Status uint8  `json:"status"` // 0 - not done, 1 - in progress, 2 - done
+}
+
+func createTask(taskName string, taskList []Task) []Task {
+	if taskName == "" || utf8.RuneCountInString(taskName) <= 3 {
 		fmt.Println("Имя задачи должно быть не менее трёх символов.")
 		return taskList
 	}
 
-	taskList = append(taskList, task)
+	taskList = append(taskList, Task{Task: taskName})
 	fmt.Println("Добавил задачу.")
 	return taskList
 }
 
-func deleteTask(num int, taskList []string) []string {
+func deleteTask(num int, taskList []Task) []Task {
 	for {
 		num = num - 1
 		for index := range taskList {
@@ -39,20 +44,20 @@ func deleteTask(num int, taskList []string) []string {
 	}
 }
 
-func updateTask(num int, taskList []string) []string {
+func updateTask(num int, taskList []Task) []Task {
 	for {
 		num = num - 1
 		for index := range taskList {
 			if index == num {
 				for {
-					fmt.Println("Нашёл задачу.\nВведите новое имя.")
+					fmt.Println("Нашёл задачу.\nВведите новое содержание.")
 					input, err := reader.ReadString('\n')
 					if err != nil && err != io.EOF {
 						fmt.Fprintln(os.Stderr, "Ошибка ввода:", err)
 						continue
 					}
 					if utf8.RuneCountInString(input) >= 3 || input != "" {
-						taskList[index] = input
+						taskList[index].Task = input
 						return taskList
 					} else {
 						fmt.Println("Ошибка ввода или имя менее трёх символов.")
@@ -64,16 +69,40 @@ func updateTask(num int, taskList []string) []string {
 		num = getNum()
 	}
 }
-
-func readTaskList(taskList []string) {
+func updateTaskStatus(taskList []Task, num, statusCode int) []Task {
+	for {
+		num = num - 1
+		for index := range taskList {
+			if index == num {
+				fmt.Println("Нашёл задачу.")
+				taskList[index].Status = uint8(statusCode)
+				return taskList
+			}
+		}
+		fmt.Printf("Не нашли такую задачу.\nПовторите ввод.\nВведите номер задачи, которую хотите изменить.\n")
+		num = getNum()
+	}
+}
+func readTaskList(taskList []Task) {
 	fmt.Println("Список задач:")
-	for index, value := range taskList {
-		fmt.Printf("№%v. %v\n", index+1, value)
+	for index, task := range taskList {
+		var taskStatusString string
+		switch task.Status {
+		case 0:
+			taskStatusString = "Not done"
+		case 1:
+			taskStatusString = "In progress"
+		case 2:
+			taskStatusString = "Done"
+		default:
+			fmt.Println("Какая-то ошибка.")
+		}
+		fmt.Printf("№%v. Прогресс: %v  Задача: %v\n", index+1, taskStatusString, task.Task)
 	}
 }
 
-func hello(taskList []string) {
-	fmt.Printf("\nДобро пожаловать в терминал взаимодействия со списком дел.\nВзаимодействуй с терминалом через ввод цифр.\n\n")
+func hello(taskList []Task) {
+	fmt.Printf("\nИнструкция:\n\n")
 	fmt.Printf("1. Посмотри список дел.\n")
 	fmt.Printf("2. Перейти в меню редактирования задач.( Имя задачи >= 3 символов)\n")
 	fmt.Printf("3. Сохранить изменения в файле.\n")
@@ -116,7 +145,7 @@ func getNum() (num int) {
 	}
 }
 
-func saveToFile(taskList []string) error {
+func saveToFile(taskList []Task) error {
 	data, err := json.Marshal(taskList)
 	if err != nil {
 		return err
@@ -125,22 +154,22 @@ func saveToFile(taskList []string) error {
 	return os.WriteFile("list.json", data, 0644)
 }
 
-func loadFromFile() ([]string, error) {
+func loadFromFile() ([]Task, error) {
 	data, err := os.ReadFile("list.json")
 	if err != nil {
 		if os.IsNotExist(err) {
-			return []string{}, nil
+			return []Task{}, nil
 		}
 		return nil, err
 	}
 
-	var todos []string
-	err = json.Unmarshal(data, &todos)
+	var tasks []Task
+	err = json.Unmarshal(data, &tasks)
 	if err != nil {
 		return nil, err
 	}
 
-	return todos, nil
+	return tasks, nil
 }
 
 var (
@@ -168,23 +197,23 @@ func main() {
 		}
 		os.Exit(0)
 	}()
-
+	fmt.Printf("\nДобро пожаловать в терминал взаимодействия со списком дел.\nВзаимодействуй с терминалом через ввод цифр.\n\n")
 	hello(taskList)
 
 outerloop:
 	for {
-		fmt.Println("Ожидаю команды...\nЧтобы открыть инструкцию нажми 3.")
+		fmt.Println("Ожидаю команды...\nЧтобы открыть инструкцию нажми 4.")
 
 		switch selektorMenu := getMenuChoice(); selektorMenu {
-		case 1:
+		case 1: // Посмотри список дел
 			readTaskList(taskList)
-		case 2:
+		case 2: // Перейти в меню редактирования задач.( Имя задачи >= 3 символов)
 		loop:
 			for {
-				fmt.Println("1. Добавить задачу.\n2. Удалить задачу.\n3. Изменить задачу.\n4. Выйти в главное меню.")
+				fmt.Println("1. Добавить задачу.\n2. Удалить задачу.\n3. Изменить задачу или её статус.\n4. Выйти в главное меню.")
 
 				switch selektorPodMenu := getMenuChoice(); selektorPodMenu {
-				case 1:
+				case 1: // Добавить задачу
 					fmt.Println("Введите задачу.")
 					input, err := reader.ReadString('\n')
 					if err != nil && err != io.EOF {
@@ -192,30 +221,53 @@ outerloop:
 						os.Exit(1)
 					}
 					taskList = createTask(input, taskList)
-				case 2:
+				case 2: // Удалить задачу
 
 					fmt.Println("Введите номер задачи, которую хотите удалить.")
 					num := getNum()
 					taskList = deleteTask(num, taskList)
-				case 3:
-					fmt.Println("Введите имя задачи, которую хотите изменить.")
+				case 3: // Изменить задачу или её статус
+					fmt.Println("Введите номер задачи, которую хотите изменить.")
 					num := getNum()
-					taskList = updateTask(num, taskList)
-				case 4:
+					for {
+						fmt.Println("1. Изменить задачу.\n2. Изменить статус задачи.\n3. Выйти из подменю.")
+
+						switch selektorPodMenu := getMenuChoice(); selektorPodMenu {
+						case 1: // Изменить задачу
+							taskList = updateTask(num, taskList)
+						case 2: // Изменить статус задачи.
+							fmt.Println("Введите число,чтобы изменить статус задачи.\n1 - задача в процессе,\n2 - задача выполнена,\n3 - задача не выполнена.")
+							switch selektorPodMenu := getMenuChoice(); selektorPodMenu {
+							case 1:
+								updateTaskStatus(taskList, num, 1)
+							case 2:
+								updateTaskStatus(taskList, num, 2)
+							case 3:
+								updateTaskStatus(taskList, num, 0)
+							default:
+								fmt.Println("Неверная команда.\nПопробуй ещё раз.\nВозвращаю в предыдущее меню.")
+							}
+						case 3: // Выйти из подменю
+							break loop
+						default:
+							fmt.Println("Неверная команда.\nПопробуй ещё раз.")
+						}
+					}
+				case 4: //Выйти в главное меню.
 					break loop
 				default:
-					fmt.Println("Неверная команда.\nПопробуй ещё раз.\nВозвращаю в главное меню.")
+					fmt.Println("Неверная команда.\nПопробуй ещё раз.")
 				}
 			}
 
-		case 3:
+		case 3: // Сохранить изменения в файле.
 			err = saveToFile(taskList)
 			if err != nil {
 				fmt.Println("Ошибка сохранения файла: ", err)
 			}
-		case 4:
+		case 4: // Ещё раз открыть инструкцию.
 			hello(taskList)
-		case 5:
+		case 5: // Закрыть терминал.
 			fmt.Println("Пока-пока")
 			break outerloop
 		default:
