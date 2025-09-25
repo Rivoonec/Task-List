@@ -24,6 +24,8 @@ type Task struct {
 }
 
 // Определеяет контракт для работы с данными
+// "Любая структура, у которой 
+// есть методы Load() и Save(), считается хранилищем"
 type TaskStore interface {
 	Save(tasks []Task) error
 	Load() ([]Task, error)

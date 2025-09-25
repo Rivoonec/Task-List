@@ -1,17 +1,14 @@
 package main
 
 import (
-	"bufio"
+	"ToDoList/cli"
+	"ToDoList/store"
+	"ToDoList/service"
 	"fmt"
 	"io"
 	"os"
 	"os/signal"
-	"strconv"
-	"strings"
 	"syscall"
-	"ToDoList/store"
-	"ToDoList/service"
-	"ToDoList/cli"
 )
 
 
@@ -19,8 +16,7 @@ import (
 
 
 func main() {
-	// Общая читалка по программе
-	var reader = bufio.NewReader(os.Stdin)
+
 	//Хранилище
 	s := store.NewJSONFileStore(store.StorageFileName)
 
@@ -44,7 +40,7 @@ func main() {
 		os.Exit(0)
 	}()
 	fmt.Printf("\nДобро пожаловать в терминал взаимодействия со списком дел.\nВзаимодействуй с терминалом через ввод цифр.\n\n")
-	hello(taskList)
+	cli.Hello(taskList)
 
 outerloop:
 	for {

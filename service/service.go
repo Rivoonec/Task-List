@@ -5,64 +5,93 @@ import (
 	"unicode/utf8"
 	"ToDoList/store"
 )
+//Переработать код, перенести валидатицаю куда-нибудь
 
+// TaskService содержит бизнес-логику приложения
 type TaskService struct {
+	// store - это НЕ конкретная реализация, а ИНТЕРФЕЙС
+    // Это контракт, который гарантирует,
+	// что у store есть методы Load() и Save()
 	store store.TaskStore
 	tasks []store.Task
 }
 
+// NewTaskService - конструктор, который принимает ЛЮБОЕ хранилище, 
+// удовлетворяющее интерфейсу TaskStore
+func NewTaskService(store store.TaskStore)(*TaskService, error){
 
+	// Не знаем, что под капотом в store.Load(), просто хотим задачи
+	tasks, err := store.Load()
+	if err != nil {
+		return nil, err
+	}
+	return &TaskService{
+		store : store, // Сохраняем интерфейс, а не реализацию
+		tasks : tasks, // Локальная копия задач в памяти
+	}, nil
+}
 func (t *TaskService) CreateTask(taskName string) error {
+
+	// 1. Валидация (бизнес логика)
 	if taskName == "" || utf8.RuneCountInString(taskName) <= 3 {
 		return fmt.Errorf("Имя задачи должно быть не менее трёх символов.")
 	}
 
-	t.tasks = append(t.tasks, store.Task{Task: taskName})
+	// 2. Добавляем задачу в локальный список
+	t.tasks = append(t.tasks, store.Task{
+		Task: taskName,
+		Status: store.StatusNotDone,
+		})
 
-	return nil
+	// 3. Сохраняем через интерфейс
+	return t.store.Save(t.tasks)
+}
+
+
+func (t *TaskService) DeleteTask(num int) error {
+	num--
+
+	// 1. Валидация
+	if num >= len(t.tasks) || num < 0 {
+		return fmt.Errorf("Неверный номер задачи.")
+	}
+	
+	// 2. Поиск нужной задачи и её удаление.
+	for index := range t.tasks {
+		if index == num {
+			t.tasks= append(t.tasks[:index], t.tasks[index+1:]...)
+			fmt.Printf("Удалили задачу номер %v .\n", num)
+
+			// 3. Сохраняем изменения через интерфейс.
+			return t.store.Save(t.tasks)
+		}
+	}
+
+	return fmt.Errorf("Не нашли задачу с таким номером.")
 }
 
 // Переписать всё, что ниже в методы
-func (t *TaskService) DeleteTask(num int) error {
-	for {
-		num = num - 1
-		for index := range t.tasks {
-			if index == num {
-				t.tasks= append(t.tasks[:index], t.tasks[index+1:]...)
-				fmt.Printf("Удалили задачу номер %v .\n", num)
-				return nil
-			}
-		}
-		// Превратить в ошибку и завершать функцию, а не бесконечный ввод?
-		fmt.Printf("Не нашли такую задачу.\nПовторите ввод.\nВведите номер задачи, которую хотите удалить.\n")
-		num = getNum()
-	}
-}
+func (t *TaskService) UpdateTask(num int, name string) error {
+	num--
 
-func (t *TaskService) UpdateTask(num int) []Task {
-	for {
-		num = num - 1
-		for index := range t.tasks {
-			if index == num {
-				for {
-					fmt.Println("Нашёл задачу.\nВведите новое содержание.")
-					input, err := reader.ReadString('\n')
-					if err != nil && err != io.EOF {
-						fmt.Fprintln(os.Stderr, "Ошибка ввода:", err)
-						continue
-					}
-					if utf8.RuneCountInString(input) >= 3 || input != "" {
-						t.tasks[index].Task = input
-						return t.tasks
-					} else {
-						fmt.Println("Ошибка ввода или имя менее трёх символов.")
-					}
-				}
-			}
-		}
-		fmt.Printf("Не нашли такую задачу.\nПовторите ввод.\nВведите номер задачи, которую хотите изменить.\n")
-		num = getNum()
+	// 1. Валидация
+	if num >= len(t.tasks) || num < 0 {
+		return fmt.Errorf("Неверный номер задачи.")
 	}
+	if name == "" || utf8.RuneCountInString(name) <= 3 {
+		return fmt.Errorf("Имя задачи должно быть не менее трёх символов.")
+	}
+	// !!! Изменить на прямой доступ
+	// 2. Поиск задачи и изменение имени
+	for index := range t.tasks {
+		if index == num {
+			t.tasks[index].Task = name
+			// 3. Сохранение изменений
+			return t.store.Save(t.tasks)
+		}
+	}
+
+	return fmt.Errorf("Не нашли задачу с таким номером.")
 }
 func UpdateTaskStatus(t []Task, num int, statusCode TaskStatus) []Task {
 	for {
