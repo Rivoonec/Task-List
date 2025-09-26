@@ -2,6 +2,7 @@ package store
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 )
 
@@ -47,13 +48,13 @@ func (s *JSONFileStore) Load() ([]Task, error) {
 		if os.IsNotExist(err) {
 			return []Task{}, nil
 		}
-		return nil, err
+		return nil, fmt.Errorf("ошибка загрузки из файла: %w", err)
 	}
 
 	var tasks []Task
 	err = json.Unmarshal(data, &tasks)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("ошибка кодировки в JSON: %w", err)
 	}
 
 	return tasks, nil
@@ -63,7 +64,7 @@ func (s *JSONFileStore) Load() ([]Task, error) {
 func (s *JSONFileStore) Save(taskList []Task) error {
 	data, err := json.Marshal(taskList)
 	if err != nil {
-		return err
+		return fmt.Errorf("ошибка кодировки в JSON: %w", err )
 	}
 
 	return os.WriteFile(s.filename, data, 0644)

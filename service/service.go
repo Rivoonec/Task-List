@@ -1,115 +1,121 @@
 package service
 
 import (
+	"ToDoList/store"
 	"fmt"
 	"unicode/utf8"
-	"ToDoList/store"
 )
-//Переработать код, перенести валидатицаю куда-нибудь
 
-// TaskService содержит бизнес-логику приложения
+//Переработать код, перенести валидациаю куда-нибудь?
+
 type TaskService struct {
 	// store - это НЕ конкретная реализация, а ИНТЕРФЕЙС
-    // Это контракт, который гарантирует,
+	// Это контракт, который гарантирует,
 	// что у store есть методы Load() и Save()
-	store store.TaskStore
-	tasks []store.Task
+	Store store.TaskStore
+	Tasks []store.Task
 }
 
-// NewTaskService - конструктор, который принимает ЛЮБОЕ хранилище, 
+// NewTaskService - конструктор, который принимает ЛЮБОЕ хранилище,
 // удовлетворяющее интерфейсу TaskStore
-func NewTaskService(store store.TaskStore)(*TaskService, error){
-
+func NewTaskService(store store.TaskStore) (*TaskService, error) {
 	// Не знаем, что под капотом в store.Load(), просто хотим задачи
 	tasks, err := store.Load()
 	if err != nil {
 		return nil, err
 	}
 	return &TaskService{
-		store : store, // Сохраняем интерфейс, а не реализацию
-		tasks : tasks, // Локальная копия задач в памяти
+		Store: store, // Сохраняем интерфейс, а не реализацию
+		Tasks: tasks, // Локальная копия задач в памяти
 	}, nil
 }
+
 func (t *TaskService) CreateTask(taskName string) error {
 
 	// 1. Валидация (бизнес логика)
 	if taskName == "" || utf8.RuneCountInString(taskName) <= 3 {
-		return fmt.Errorf("Имя задачи должно быть не менее трёх символов.")
+		return fmt.Errorf("имя задачи должно быть не менее трёх символов")
 	}
 
 	// 2. Добавляем задачу в локальный список
-	t.tasks = append(t.tasks, store.Task{
-		Task: taskName,
+	t.Tasks = append(t.Tasks, store.Task{
+		Task:   taskName,
 		Status: store.StatusNotDone,
-		})
+	})
 
 	// 3. Сохраняем через интерфейс
-	return t.store.Save(t.tasks)
+	return t.Store.Save(t.Tasks)
 }
-
 
 func (t *TaskService) DeleteTask(num int) error {
 	num--
 
-	// 1. Валидация
-	if num >= len(t.tasks) || num < 0 {
-		return fmt.Errorf("Неверный номер задачи.")
-	}
-	
-	// 2. Поиск нужной задачи и её удаление.
-	for index := range t.tasks {
-		if index == num {
-			t.tasks= append(t.tasks[:index], t.tasks[index+1:]...)
-			fmt.Printf("Удалили задачу номер %v .\n", num)
-
-			// 3. Сохраняем изменения через интерфейс.
-			return t.store.Save(t.tasks)
-		}
+	// Валидация (достаточная проверка)
+	if num >= len(t.Tasks) || num < 0 {
+		return fmt.Errorf("неверный номер задачи")
 	}
 
-	return fmt.Errorf("Не нашли задачу с таким номером.")
+	// Прямой доступ к элементу (без цикла)
+	t.Tasks = append(t.Tasks[:num], t.Tasks[num+1:]...)
+	fmt.Printf("Удалили задачу номер %v.\n", num+1) // +1 чтобы показать исходный номер
+
+	// Сохраняем изменения
+	return t.Store.Save(t.Tasks)
 }
 
-// Переписать всё, что ниже в методы
 func (t *TaskService) UpdateTask(num int, name string) error {
 	num--
 
 	// 1. Валидация
-	if num >= len(t.tasks) || num < 0 {
-		return fmt.Errorf("Неверный номер задачи.")
+	if num >= len(t.Tasks) || num < 0 {
+		return fmt.Errorf("неверный номер задачи")
 	}
 	if name == "" || utf8.RuneCountInString(name) <= 3 {
-		return fmt.Errorf("Имя задачи должно быть не менее трёх символов.")
-	}
-	// !!! Изменить на прямой доступ
-	// 2. Поиск задачи и изменение имени
-	for index := range t.tasks {
-		if index == num {
-			t.tasks[index].Task = name
-			// 3. Сохранение изменений
-			return t.store.Save(t.tasks)
-		}
+		return fmt.Errorf("имя задачи должно быть не менее трёх символов")
 	}
 
-	return fmt.Errorf("Не нашли задачу с таким номером.")
+	// 2. Поиск задачи и изменение имени
+	t.Tasks[num].Task = name
+
+	// 3. Сохранение изменений
+	return t.Store.Save(t.Tasks)
 }
-func UpdateTaskStatus(t []Task, num int, statusCode TaskStatus) []Task {
-	for {
-		num = num - 1
-		for index := range t.tasks {
-			if index == num {
-				fmt.Println("Нашёл задачу.")
-				t.tasks[index].Status = statusCode
-				return t.tasks
-			}
-		}
-		fmt.Printf("Не нашли такую задачу.\nПовторите ввод.\nВведите номер задачи, которую хотите изменить.\n")
-		num = getNum()
+
+func (t *TaskService) UpdateTaskStatus(num int, statusCode store.TaskStatus) error {
+	num--
+
+	// 1. Валидация
+	if num >= len(t.Tasks) || num < 0 {
+		return fmt.Errorf("неверный номер задачи")
 	}
+
+	// 2. Поиск задачи и изменение статуса
+	t.Tasks[num].Status = statusCode
+
+	// 3. Сохранение изменений
+	return t.Store.Save(t.Tasks)
 }
-func ReadTaskList(t []Task) {
+
+func (t *TaskService) GetStatusText(status store.TaskStatus) string {
+		switch status {
+		case store.StatusNotDone:
+			return "Not done"
+		case store.StatusInProgress:
+			return "In progress"
+		case store.StatusDone:
+			return  "Done"
+		default:
+			return "Unknown"
+		}
+}
+
+func (t *TaskService) GetAllTasks() []store.Task {
+	return t.Tasks
+}
+
+/*func (t *TaskService) ReadTaskList() {
 	fmt.Println("Список задач:")
-	for index, task := range t.tasks {
+	for index, task := range t.Tasks {
 		var taskStatusString string
 		switch task.Status {
 		case 0:
@@ -123,4 +129,4 @@ func ReadTaskList(t []Task) {
 		}
 		fmt.Printf("№%v. Прогресс: %v  Задача: %v\n", index+1, taskStatusString, task.Task)
 	}
-}
+}*/

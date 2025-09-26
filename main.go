@@ -2,10 +2,11 @@ package main
 
 import (
 	"ToDoList/cli"
-	"ToDoList/store"
 	"ToDoList/service"
+	"ToDoList/store"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -17,13 +18,10 @@ import (
 
 func main() {
 
-	//Хранилище
-	s := store.NewJSONFileStore(store.StorageFileName)
-
-	taskList, err := s.Load()
+	//Создаем сервис задач, как аргумент передаём создание хранилища.
+	TaskService, err := service.NewTaskService(store.NewJSONFileStore(store.StorageFileName))
 	if err != nil {
-		fmt.Println("Ошибка загрузки: ", err)
-		return
+		log.Fatal("Ошибка при создание сервиса задач:", err)
 	}
 	// Спасибо DeepSeek за контрибьют Kappa
 	// Создаем канал для перехвата сигналов ОС
@@ -34,13 +32,14 @@ func main() {
 	go func() {
 		<-sigChan // Ждем сигнал
 		fmt.Println("\nПолучен сигнал завершения. Сохраняем данные...")
-		if err := s.Save(taskList); err != nil {
+		if err := TaskService.Store.Save(TaskService.Tasks); err != nil {
 			fmt.Println("Ошибка сохранения файла: ", err)
 		}
 		os.Exit(0)
 	}()
+
 	fmt.Printf("\nДобро пожаловать в терминал взаимодействия со списком дел.\nВзаимодействуй с терминалом через ввод цифр.\n\n")
-	cli.Hello(taskList)
+	cli.Hello()
 
 outerloop:
 	for {

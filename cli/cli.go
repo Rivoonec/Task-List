@@ -10,17 +10,35 @@ import (
 	"strconv"
 	"strings"
 )
-// Общая читалка по программе
-var reader = bufio.NewReader(os.Stdin)
 
-func Hello(taskList []store.Task) {
+type CLI struct {
+	service  *service.TaskService
+	reader   *bufio.Reader
+}
+
+func NewCli(service *service.TaskService, reader *bufio.Reader) *CLI{
+	return &CLI{
+			service: service,
+			reader: reader,
+	}
+}
+
+func (c *CLI) Run() error {
+	c.showWelcome()
+
+	for{
+		// Перенести запуск основных меню и выборов сюда
+		// Обобщить их до методов CLI
+	}
+}
+func Hello() {
 	fmt.Printf("\nИнструкция:\n\n")
 	fmt.Printf("1. Посмотри список дел.\n")
 	fmt.Printf("2. Перейти в меню редактирования задач.( Имя задачи >= 3 символов)\n")
 	fmt.Printf("3. Сохранить изменения в файле.\n")
 	fmt.Printf("4. Ещё раз открыть инструкцию.\n")
 	fmt.Printf("5. Закрыть терминал.\n\n")
-	service.ReadTaskList(taskList)
+	service.()
 }
 
 func GetMenuChoice(reader *bufio.Reader) int {
