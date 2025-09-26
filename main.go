@@ -51,7 +51,7 @@ outerloop:
 		case 2: // Перейти в меню редактирования задач.( Имя задачи >= 3 символов)
 		loop:
 			for {
-				fmt.Println("1. Добавить задачу.\n2. Удалить задачу.\n3. Изменить задачу или её статус.\n4. Выйти в главное меню.")
+				fmt.Println("1.")
 
 				switch selektorPodMenu := getMenuChoice(); selektorPodMenu {
 				case 1: // Добавить задачу

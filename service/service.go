@@ -51,7 +51,7 @@ func (t *TaskService) DeleteTask(num int) error {
 	num--
 
 	// Валидация (достаточная проверка)
-	if num >= len(t.Tasks) || num < 0 {
+	if num < 0 || num >= len(t.Tasks) {
 		return fmt.Errorf("неверный номер задачи")
 	}
 
