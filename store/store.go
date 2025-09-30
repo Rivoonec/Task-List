@@ -61,8 +61,8 @@ func (s *JSONFileStore) Load() ([]Task, error) {
 }
 
 // Saves data to JSON file, returns error
-func (s *JSONFileStore) Save(taskList []Task) error {
-	data, err := json.Marshal(taskList)
+func (s *JSONFileStore) Save(tasks []Task) error {
+	data, err := json.Marshal(tasks)
 	if err != nil {
 		return fmt.Errorf("ошибка кодировки в JSON: %w", err )
 	}

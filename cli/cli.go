@@ -15,7 +15,7 @@ type CLI struct {
 	reader  *bufio.Reader
 }
 
-func NewCli(service *service.TaskService, reader *bufio.Reader) *CLI {
+func NewCLI(service *service.TaskService, reader *bufio.Reader) *CLI {
 	return &CLI{
 		service: service,
 		reader:  reader,
@@ -48,7 +48,7 @@ func (c *CLI) showMainMenu() {
 	fmt.Println("\nГлавное меню:")
 	fmt.Println("1. Посмотреть задачи")
 	fmt.Println("2. Редактировать задачи")
-	fmt.Println("4. Помощь")
+	fmt.Println("3. Помощь")
 	fmt.Printf("4. Закрыть терминал.\n\n")
 	fmt.Print("Выберите вариант: ")
 }
@@ -97,6 +97,13 @@ func (c *CLI) createTask() {
 
 // Удаление задачи
 func (c *CLI) deleteTask() {
+
+    tasks := c.service.GetAllTasks()
+    if len(tasks) == 0 {
+		c.showError("Нет задач для удаления.")
+        return 
+    }
+
 	c.listTasks()
 
 	fmt.Print("Введите номер задачи для удаления: ")

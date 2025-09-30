@@ -3,6 +3,7 @@ package service
 import (
 	"ToDoList/store"
 	"fmt"
+	"strings"
 	"unicode/utf8"
 )
 
@@ -30,16 +31,16 @@ func NewTaskService(store store.TaskStore) (*TaskService, error) {
 	}, nil
 }
 
-func (t *TaskService) CreateTask(taskName string) error {
+func (t *TaskService) CreateTask(name string) error {
 
-	// 1. Валидация (бизнес логика)
-	if taskName == "" || utf8.RuneCountInString(taskName) <= 3 {
-		return fmt.Errorf("имя задачи должно быть не менее трёх символов")
+	// 1. Валидация 
+	if err := t.validateTaskName(name); err != nil {
+		return fmt.Errorf("данные не прошли валидацию %w", err)
 	}
 
 	// 2. Добавляем задачу в локальный список
 	t.Tasks = append(t.Tasks, store.Task{
-		Task:   taskName,
+		Task:   name,
 		Status: store.StatusNotDone,
 	})
 
@@ -51,13 +52,13 @@ func (t *TaskService) DeleteTask(num int) error {
 	num--
 
 	// Валидация (достаточная проверка)
-	if num < 0 || num >= len(t.Tasks) {
-		return fmt.Errorf("неверный номер задачи")
+	if err := t.validateTaskNumber(num); err != nil {
+		return fmt.Errorf("данные не прошли валидацию %w", err)
 	}
+
 
 	// Прямой доступ к элементу (без цикла)
 	t.Tasks = append(t.Tasks[:num], t.Tasks[num+1:]...)
-	fmt.Printf("Удалили задачу номер %v.\n", num+1) // +1 чтобы показать исходный номер
 
 	// Сохраняем изменения
 	return t.Store.Save(t.Tasks)
@@ -67,11 +68,12 @@ func (t *TaskService) UpdateTask(num int, name string) error {
 	num--
 
 	// 1. Валидация
-	if num >= len(t.Tasks) || num < 0 {
-		return fmt.Errorf("неверный номер задачи")
+	if err := t.validateTaskNumber(num); err != nil {
+		return fmt.Errorf("данные не прошли валидацию %w", err)
 	}
-	if name == "" || utf8.RuneCountInString(name) <= 3 {
-		return fmt.Errorf("имя задачи должно быть не менее трёх символов")
+
+	if err := t.validateTaskName(name); err != nil {
+		return fmt.Errorf("данные не прошли валидацию %w", err)
 	}
 
 	// 2. Поиск задачи и изменение имени
@@ -85,8 +87,8 @@ func (t *TaskService) UpdateTaskStatus(num int, statusCode store.TaskStatus) err
 	num--
 
 	// 1. Валидация
-	if num >= len(t.Tasks) || num < 0 {
-		return fmt.Errorf("неверный номер задачи")
+	if err := t.validateTaskNumber(num); err != nil {
+		return fmt.Errorf("данные не прошли валидацию %w", err)
 	}
 
 	// 2. Поиск задачи и изменение статуса
@@ -113,20 +115,22 @@ func (t *TaskService) GetAllTasks() []store.Task {
 	return t.Tasks
 }
 
-/*func (t *TaskService) ReadTaskList() {
-	fmt.Println("Список задач:")
-	for index, task := range t.Tasks {
-		var taskStatusString string
-		switch task.Status {
-		case 0:
-			taskStatusString = "Not done"
-		case 1:
-			taskStatusString = "In progress"
-		case 2:
-			taskStatusString = "Done"
-		default:
-			fmt.Println("Какая-то ошибка.")
-		}
-		fmt.Printf("№%v. Прогресс: %v  Задача: %v\n", index+1, taskStatusString, task.Task)
-	}
-}*/
+// Отдельно валидация
+func (t *TaskService) validateTaskNumber(num int) error {
+    if num < 0 || num >= len(t.Tasks) {
+        return fmt.Errorf("неверный номер задачи: %d", num+1)
+    }
+    return nil
+}
+
+func (t *TaskService) validateTaskName(name string) error {
+    name = strings.TrimSpace(name)
+    if name == "" {
+        return fmt.Errorf("имя задачи не может быть пустым")
+    }
+    if utf8.RuneCountInString(name) < 3 {
+        return fmt.Errorf("имя задачи должно быть не менее трёх символов")
+    }
+    return nil
+}
+

@@ -25,7 +25,7 @@ func main() {
 
 	// Инициализация и запуск CLI
 	reader := bufio.NewReader(os.Stdin)
-	appCLI := cli.NewCli(taskService, reader)
+	appCLI := cli.NewCLI(taskService, reader)
 
 	if err := appCLI.Run(); err != nil {
 		log.Fatal("Ошибка при работе приложения", err)
