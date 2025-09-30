@@ -2,6 +2,7 @@ package cli
 
 import (
 	"ToDoList/service"
+	"ToDoList/store"
 	"bufio"
 	"fmt"
 	"io"
@@ -10,25 +11,25 @@ import (
 )
 
 type CLI struct {
-	service  *service.TaskService
-	reader   *bufio.Reader
+	service *service.TaskService
+	reader  *bufio.Reader
 }
 
-func NewCli(service *service.TaskService, reader *bufio.Reader) *CLI{
+func NewCli(service *service.TaskService, reader *bufio.Reader) *CLI {
 	return &CLI{
-			service: service,
-			reader: reader,
+		service: service,
+		reader:  reader,
 	}
 }
 
 func (c *CLI) Run() error {
 	c.showWelcome()
 
-	for{
+	for {
 		c.showMainMenu()
 
-		switch choice:= c.getMenuChoice(); choice{
-		case 1:// Посмотри список дел
+		switch choice := c.getMenuChoice(); choice {
+		case 1: // Посмотри список дел
 			c.listTasks()
 		case 2: // Перейти в меню редактирования задач.( Имя задачи >= 3 символов)
 			c.showEditMenu()
@@ -39,8 +40,6 @@ func (c *CLI) Run() error {
 		default:
 			c.showError("Неверная команда. Попробуйте снова.")
 		}
-		// Перенести запуск основных меню и выборов сюда
-		// Обобщить их до методов CLI
 	}
 }
 
@@ -50,12 +49,12 @@ func (c *CLI) showMainMenu() {
 	fmt.Println("1. Посмотреть задачи")
 	fmt.Println("2. Редактировать задачи")
 	fmt.Println("4. Помощь")
-	fmt.Println("4. Закрыть терминал.\n\n")
+	fmt.Printf("4. Закрыть терминал.\n\n")
 	fmt.Print("Выберите вариант: ")
 }
 
 //Показывает меню редактирования задач
-func (c *CLI) showEditMenu(){
+func (c *CLI) showEditMenu() {
 	for {
 		fmt.Println("\nМеню редактирования:")
 		fmt.Println("1. Добавить задачу.")
@@ -64,7 +63,7 @@ func (c *CLI) showEditMenu(){
 		fmt.Println("4. Назад в главное меню.")
 		fmt.Print("Выберите вариант: > ")
 
-		switch choice := c.getMenuChoice(); choice{
+		switch choice := c.getMenuChoice(); choice {
 		case 1: // Добавить задачу
 			c.createTask()
 		case 2: // Удалить задачу
@@ -72,11 +71,61 @@ func (c *CLI) showEditMenu(){
 		case 3: // Изменить задачу или её статус
 			c.editTask()
 		case 4: //Выйти в главное меню
-			return 
+			return
 		default:
 			c.showError("Неверная команда. Попробуйте снова.")
 		}
 	}
+}
+
+// Создание задачи
+func (c *CLI) createTask() {
+	fmt.Print("Введите новую задачу: ")
+	taskName, err := c.ReadString()
+	if err != nil {
+		c.showError("Ошибка чтения ввода: ", err)
+		return
+	}
+
+	if err := c.service.CreateTask(taskName); err != nil {
+		c.showError(err.Error())
+		return
+	}
+
+	c.showSuccess("Задача успешно добавлена!")
+}
+
+// Удаление задачи
+func (c *CLI) deleteTask() {
+	c.listTasks()
+
+	fmt.Print("Введите номер задачи для удаления: ")
+	taskNum, err := c.readInt()
+	if err != nil {
+		c.showError("Ошибка чтения номера:", err)
+		return
+	}
+
+	if err := c.service.DeleteTask(taskNum); err != nil {
+		c.showError(err.Error())
+		return
+	}
+
+	c.showSuccess("Задача успешно удалена!")
+}
+
+// editTask обрабатывает редактирование задачи
+func (c *CLI) editTask() {
+	c.listTasks()
+
+	fmt.Print("Введите номер задачи для редактирования: ")
+	taskNum, err := c.readInt()
+	if err != nil {
+		c.showError("Ошибка чтения номера:", err)
+		return
+	}
+
+	c.showEditSubMenu(taskNum)
 }
 
 //Показывает подменю редактирования конкретной задачи
@@ -87,8 +136,8 @@ func (c *CLI) showEditSubMenu(taskNum int) {
 		fmt.Println("2. Изменить статус задачи")
 		fmt.Println("3. Назад")
 		fmt.Print("Выберите вариант: ")
-		
-		switch choice := c.getMenuChoice();choice {
+
+		switch choice := c.getMenuChoice(); choice {
 		case 1:
 			c.updateTaskText(taskNum)
 		case 2:
@@ -101,15 +150,64 @@ func (c *CLI) showEditSubMenu(taskNum int) {
 	}
 }
 
+// Изменить текст задачи
+func (c *CLI) updateTaskText(taskNum int) {
+
+	fmt.Print("Введите новый текст задачи: ")
+
+	taskName, err := c.ReadString()
+	if err != nil {
+		c.showError("Ошибка чтения ввода: ", err)
+		return
+	}
+
+	if err := c.service.UpdateTask(taskNum, taskName); err != nil {
+		c.showError(err.Error())
+		return
+	}
+
+	c.showSuccess("Текст задачи успешно обновлён!")
+}
+
+// Изменить статус задачи
+func (c *CLI) updateTaskStatus(taskNum int) {
+	fmt.Println("Выберите новый статус:")
+	fmt.Println("1. Не выполнена")
+	fmt.Println("2. В процессе")
+	fmt.Println("3. Выполнена")
+	fmt.Print("Выберите статус: ")
+
+	choice := c.getMenuChoice()
+	var newStatus store.TaskStatus
+
+	switch choice {
+	case 1:
+		newStatus = store.StatusNotDone
+	case 2:
+		newStatus = store.StatusInProgress
+	case 3:
+		newStatus = store.StatusDone
+	default:
+		c.showError("Неверный выбор статуса.")
+		return
+	}
+
+	if err := c.service.UpdateTaskStatus(taskNum, newStatus); err != nil {
+		c.showError(err.Error())
+		return
+	}
+
+	c.showSuccess("Статус задачи успешно изменён!")
+}
+
 // Показывает приветственное сообщение
 func (c *CLI) showWelcome() {
 	fmt.Printf("\nДобро пожаловать в терминал списка дел.\n")
 	fmt.Printf("Взаимодействуй с терминалом через ввод цифр.\n\n")
-	c.showHelp()
 
 }
 
-func (c *CLI) listTasks(){
+func (c *CLI) listTasks() {
 	tasks := c.service.GetAllTasks()
 	if len(tasks) == 0 {
 		fmt.Println("Список задач пуст.")
@@ -119,7 +217,7 @@ func (c *CLI) listTasks(){
 	fmt.Println("\nСписок задача:")
 	for i, task := range tasks {
 		statusText := c.service.GetStatusText(task.Status)
-		fmt.Printf("№%v. [%s]  %s\n", i+1,statusText, task.Task)
+		fmt.Printf("№%v. [%s]  %s\n", i+1, statusText, task.Task)
 	}
 }
 
@@ -141,7 +239,7 @@ func (c *CLI) getMenuChoice() int {
 	return -1
 }
 
-func (c *CLI) ReadString()(string, error){
+func (c *CLI) ReadString() (string, error) {
 	input, err := c.reader.ReadString('\n')
 	if err != nil && err != io.EOF {
 		return "", fmt.Errorf("ошибка ввода %w", err)
@@ -156,20 +254,20 @@ func (c *CLI) readInt() (int, error) {
 	}
 	num, err := strconv.Atoi(input)
 	if err != nil {
-		return 0, fmt.Errorf("ошибка конвертации строк", err)
+		return 0, fmt.Errorf("ошибка конвертации строк %w", err)
 	}
 	return num, nil
 }
 
-func (c *CLI) showError(message string, args ...any){
+func (c *CLI) showError(message string, args ...any) {
 	fmt.Printf("❌ Ошибка: "+message+"\n", args...)
 }
 
 func (c *CLI) showSuccess(message string) {
-	fmt.Printf("✅ %s\n", message)	
+	fmt.Printf("✅ %s\n", message)
 }
 
-func(c *CLI) exit() error {
+func (c *CLI) exit() error {
 	fmt.Println("До свидания!")
 	return nil
 }
