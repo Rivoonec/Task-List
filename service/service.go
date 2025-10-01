@@ -1,111 +1,130 @@
 package service
 
 import (
+	"ToDoList/locale"
 	"ToDoList/store"
+	"errors"
 	"fmt"
 	"strings"
 	"unicode/utf8"
 )
 
-//Переработать код, перенести валидациаю куда-нибудь?
 
 type TaskService struct {
-	// store - это НЕ конкретная реализация, а ИНТЕРФЕЙС
-	// Это контракт, который гарантирует,
-	// что у store есть методы Load() и Save()
+	// store is NOT a concrete implementation, but an INTERFACE
+	// This is a contract that guarantees
+	// that store has Load() and Save() methods
 	Store store.TaskStore
 	Tasks []store.Task
+	locale *locale.Manager
 }
 
-// NewTaskService - конструктор, который принимает ЛЮБОЕ хранилище,
-// удовлетворяющее интерфейсу TaskStore
-func NewTaskService(store store.TaskStore) (*TaskService, error) {
-	// Не знаем, что под капотом в store.Load(), просто хотим задачи
+// NewTaskService - constructor that accepts ANY storage
+// that satisfies TaskStore interface
+func NewTaskService(store store.TaskStore, localeManager *locale.Manager) (*TaskService, error) {
+	// We don't know what's under the hood in store.Load(), we just want tasks
 	tasks, err := store.Load()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: %w", localeManager.Get("file_load_error"), err)
 	}
 	return &TaskService{
-		Store: store, // Сохраняем интерфейс, а не реализацию
-		Tasks: tasks, // Локальная копия задач в памяти
+		Store:  store, // We save interface, not implementation
+		Tasks:  tasks, // Local copy of tasks in memory
+		locale: localeManager,
 	}, nil
 }
 
 func (t *TaskService) CreateTask(name string) error {
 
-	// 1. Валидация 
+	// 1. Validation
 	if err := t.validateTaskName(name); err != nil {
-		return fmt.Errorf("данные не прошли валидацию %w", err)
+		return fmt.Errorf("%s: %w", t.locale.Get("validation_error"), err)
 	}
 
-	// 2. Добавляем задачу в локальный список
+	// 2. Add task to local list
 	t.Tasks = append(t.Tasks, store.Task{
 		Task:   name,
 		Status: store.StatusNotDone,
 	})
 
-	// 3. Сохраняем через интерфейс
-	return t.Store.Save(t.Tasks)
+	// 3. Save through interface
+	if err := t.Store.Save(t.Tasks); err != nil {
+		// Wrap store error with localized message
+		return fmt.Errorf("%s: %w", t.locale.Get("file_save_error"), err)
+	}
+	return nil
 }
 
 func (t *TaskService) DeleteTask(num int) error {
 	num--
 
-	// Валидация (достаточная проверка)
+	// Validation
 	if err := t.validateTaskNumber(num); err != nil {
-		return fmt.Errorf("данные не прошли валидацию %w", err)
+		return fmt.Errorf("%s: %w", t.locale.Get("validation_error"), err)
 	}
 
 
-	// Прямой доступ к элементу (без цикла)
+	// Direct access to element (without loop)
 	t.Tasks = append(t.Tasks[:num], t.Tasks[num+1:]...)
 
-	// Сохраняем изменения
-	return t.Store.Save(t.Tasks)
+	// 3. Save through interface
+	if err := t.Store.Save(t.Tasks); err != nil {
+		// Wrap store error with localized message
+		return fmt.Errorf("%s: %w", t.locale.Get("file_save_error"), err)
+	}
+	return nil
 }
 
 func (t *TaskService) UpdateTask(num int, name string) error {
 	num--
 
-	// 1. Валидация
+	// 1. Validation
 	if err := t.validateTaskNumber(num); err != nil {
-		return fmt.Errorf("данные не прошли валидацию %w", err)
+		return fmt.Errorf("%s: %w", t.locale.Get("validation_error"), err)
 	}
 
 	if err := t.validateTaskName(name); err != nil {
-		return fmt.Errorf("данные не прошли валидацию %w", err)
+		return fmt.Errorf("%s: %w", t.locale.Get("validation_error"), err)
 	}
 
-	// 2. Поиск задачи и изменение имени
+	// 2. Find task and update description
 	t.Tasks[num].Task = name
 
-	// 3. Сохранение изменений
-	return t.Store.Save(t.Tasks)
+	// 3. Save through interface
+	if err := t.Store.Save(t.Tasks); err != nil {
+		// Wrap store error with localized message
+		return fmt.Errorf("%s: %w", t.locale.Get("file_save_error"), err)
+	}
+	return nil
 }
 
 func (t *TaskService) UpdateTaskStatus(num int, statusCode store.TaskStatus) error {
 	num--
 
-	// 1. Валидация
+	// 1. Validation
 	if err := t.validateTaskNumber(num); err != nil {
-		return fmt.Errorf("данные не прошли валидацию %w", err)
+		return fmt.Errorf("%s: %w", t.locale.Get("validation_error"), err)
 	}
 
-	// 2. Поиск задачи и изменение статуса
+	// 2. Find task and update status
 	t.Tasks[num].Status = statusCode
 
-	// 3. Сохранение изменений
-	return t.Store.Save(t.Tasks)
+	// 3. Save through interface
+	if err := t.Store.Save(t.Tasks); err != nil {
+		// Wrap store error with localized message
+		return fmt.Errorf("%s: %w", t.locale.Get("file_save_error"), err)
+	}
+	return nil
 }
 
 func (t *TaskService) GetStatusText(status store.TaskStatus) string {
 		switch status {
 		case store.StatusNotDone:
-			return "Not done"
+			return t.locale.Get("status_option1")
 		case store.StatusInProgress:
-			return "In progress"
+			return t.locale.Get("status_option2")
 		case store.StatusDone:
-			return  "Done"
+			return t.locale.Get("status_option3")
 		default:
 			return "Unknown"
 		}
@@ -115,10 +134,10 @@ func (t *TaskService) GetAllTasks() []store.Task {
 	return t.Tasks
 }
 
-// Отдельно валидация
+// Separate validation methods
 func (t *TaskService) validateTaskNumber(num int) error {
     if num < 0 || num >= len(t.Tasks) {
-        return fmt.Errorf("неверный номер задачи: %d", num+1)
+		return fmt.Errorf("%s: %d", t.locale.Get("task_validation_number"), num+1)
     }
     return nil
 }
@@ -126,11 +145,24 @@ func (t *TaskService) validateTaskNumber(num int) error {
 func (t *TaskService) validateTaskName(name string) error {
     name = strings.TrimSpace(name)
     if name == "" {
-        return fmt.Errorf("имя задачи не может быть пустым")
+		return errors.New(t.locale.Get("task_validation_empty"))
     }
     if utf8.RuneCountInString(name) < 3 {
-        return fmt.Errorf("имя задачи должно быть не менее трёх символов")
+		return errors.New(t.locale.Get("task_validation_short"))
     }
     return nil
 }
 
+// SetLocale allows changing locale at runtime
+func (t *TaskService) SetLocale(localeManager *locale.Manager) {
+	t.locale = localeManager
+}
+
+// SaveTasks allows explicit saving of tasks (useful for signal handling)
+func (t *TaskService) SaveTasks() error {
+	if err := t.Store.Save(t.Tasks); err != nil {
+		// ПРАВИЛЬНО: формат-строка + аргумент
+		return fmt.Errorf(t.locale.Get("service_save_error"), err)
+	}
+	return nil
+}

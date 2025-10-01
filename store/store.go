@@ -24,37 +24,37 @@ type Task struct {
 	Status TaskStatus `json:"status"` // 0 - not done, 1 - in progress, 2 - done
 }
 
-// Определеяет контракт для работы с данными
-// "Любая структура, у которой 
-// есть методы Load() и Save(), считается хранилищем"
+// TaskStore defines contract for data operations
+// "Any structure that has Load() and Save() methods is considered a storage"
 type TaskStore interface {
 	Save(tasks []Task) error
 	Load() ([]Task, error)
 }
-// Реализация для JSON файла
+
+// JSONFileStore implementation for JSON file storage
 type JSONFileStore struct {
 	filename string
 }
 
-// Новый экземпляр хранилища JSON (имя файла)
+// NewJSONFileStore creates new JSON file storage instance
 func NewJSONFileStore(filename string) *JSONFileStore {
 	return &JSONFileStore{filename: filename}
 }
 
-// Loads data from JSON file, returns slice of Tasks
+// Load data from JSON file, returns slice of Tasks
 func (s *JSONFileStore) Load() ([]Task, error) {
 	data, err := os.ReadFile(s.filename)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return []Task{}, nil
 		}
-		return nil, fmt.Errorf("ошибка загрузки из файла: %w", err)
+		return nil, fmt.Errorf("file load error: %w", err)
 	}
 
 	var tasks []Task
 	err = json.Unmarshal(data, &tasks)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка кодировки в JSON: %w", err)
+		return nil, fmt.Errorf("JSON decoding error: %w", err)
 	}
 
 	return tasks, nil
@@ -62,9 +62,9 @@ func (s *JSONFileStore) Load() ([]Task, error) {
 
 // Saves data to JSON file, returns error
 func (s *JSONFileStore) Save(tasks []Task) error {
-	data, err := json.Marshal(tasks)
+	data, err := json.MarshalIndent(tasks, "", "  ")
 	if err != nil {
-		return fmt.Errorf("ошибка кодировки в JSON: %w", err )
+		return fmt.Errorf("JSON encoding error: %w", err)
 	}
 
 	return os.WriteFile(s.filename, data, 0644)

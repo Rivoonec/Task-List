@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"ToDoList/locale"
 	"ToDoList/service"
 	"ToDoList/store"
 	"bufio"
@@ -13,12 +14,14 @@ import (
 type CLI struct {
 	service *service.TaskService
 	reader  *bufio.Reader
+	locale *locale.Manager
 }
 
-func NewCLI(service *service.TaskService, reader *bufio.Reader) *CLI {
+func NewCLI(service *service.TaskService, reader *bufio.Reader, localeManager *locale.Manager) *CLI {
 	return &CLI{
 		service: service,
 		reader:  reader,
+		locale:  localeManager,
 	}
 }
 
@@ -29,61 +32,72 @@ func (c *CLI) Run() error {
 		c.showMainMenu()
 
 		switch choice := c.getMenuChoice(); choice {
-		case 1: // Посмотри список дел
+		case 1: // View task list
 			c.listTasks()
-		case 2: // Перейти в меню редактирования задач.( Имя задачи >= 3 символов)
+		case 2: // Go to task editing menu ( Name >= 3 symbols)
 			c.showEditMenu()
-		case 3: // Ещё раз открыть инструкцию.
-			c.showMainMenu()
-		case 4: // Закрыть терминал.
+		case 3: // Show help again
+			c.showHelp()
+		case 4: // Change language
+			c.showLanguageMenu()
+		case 5: // Exit
 			return c.exit()
 		default:
-			c.showError("Неверная команда. Попробуйте снова.")
+			c.showError(c.locale.Get("invalid_choice"))
 		}
 	}
 }
 
-//Показывает главное меню
+// ========== MAIN MENU METHODS ==========
+
+// Shows main menu
 func (c *CLI) showMainMenu() {
-	fmt.Println("\nГлавное меню:")
-	fmt.Println("1. Посмотреть задачи")
-	fmt.Println("2. Редактировать задачи")
-	fmt.Println("3. Помощь")
-	fmt.Printf("4. Закрыть терминал.\n\n")
-	fmt.Print("Выберите вариант: ")
+
+	fmt.Printf("\n%s\n", c.locale.Get("main_menu_title"))
+	fmt.Println(c.locale.Get("main_menu_option1"))
+	fmt.Println(c.locale.Get("main_menu_option2"))
+	fmt.Println(c.locale.Get("main_menu_option3"))
+	fmt.Println(c.locale.Get("main_menu_option4"))
+	fmt.Println(c.locale.Get("main_menu_option5"))
+	fmt.Print(c.locale.Get("choose_option"))
+
 }
 
-//Показывает меню редактирования задач
+// ========== EDIT MENU METHODS ==========
+
+// Shows task editing menu
 func (c *CLI) showEditMenu() {
 	for {
-		fmt.Println("\nМеню редактирования:")
-		fmt.Println("1. Добавить задачу.")
-		fmt.Println("2. Удалить задачу.")
-		fmt.Println("3. Изменить задачу или её статус.")
-		fmt.Println("4. Назад в главное меню.")
-		fmt.Print("Выберите вариант: > ")
+
+		fmt.Printf("\n%s\n", c.locale.Get("edit_menu_title"))
+		fmt.Println(c.locale.Get("edit_menu_option1"))
+		fmt.Println(c.locale.Get("edit_menu_option2"))
+		fmt.Println(c.locale.Get("edit_menu_option3"))
+		fmt.Println(c.locale.Get("edit_menu_option4"))
+		fmt.Print(c.locale.Get("choose_option"))
 
 		switch choice := c.getMenuChoice(); choice {
-		case 1: // Добавить задачу
+		case 1: // Add task
 			c.createTask()
-		case 2: // Удалить задачу
+		case 2: // Delete task
 			c.deleteTask()
-		case 3: // Изменить задачу или её статус
+		case 3: /// Edit task or its status
 			c.editTask()
-		case 4: //Выйти в главное меню
+		case 4: // Back to main menu
 			return
 		default:
-			c.showError("Неверная команда. Попробуйте снова.")
+			c.showError(c.locale.Get("invalid_choice"))
 		}
 	}
 }
 
-// Создание задачи
+// ========== TASK MANAGEMENT METHODS ==========
+
 func (c *CLI) createTask() {
-	fmt.Print("Введите новую задачу: ")
+	fmt.Print(c.locale.Get("enter_new_task"))
 	taskName, err := c.ReadString()
 	if err != nil {
-		c.showError("Ошибка чтения ввода: ", err)
+		c.showError(c.locale.GetFormatted("input_error", err))
 		return
 	}
 
@@ -92,24 +106,23 @@ func (c *CLI) createTask() {
 		return
 	}
 
-	c.showSuccess("Задача успешно добавлена!")
+	c.showSuccess(c.locale.Get("task_added"))
 }
 
-// Удаление задачи
 func (c *CLI) deleteTask() {
 
     tasks := c.service.GetAllTasks()
     if len(tasks) == 0 {
-		c.showError("Нет задач для удаления.")
+		c.showError(c.locale.Get("no_tasks_to_delete"))
         return 
     }
 
 	c.listTasks()
 
-	fmt.Print("Введите номер задачи для удаления: ")
+	fmt.Print(c.locale.Get("enter_task_number"))
 	taskNum, err := c.readInt()
 	if err != nil {
-		c.showError("Ошибка чтения номера:", err)
+		c.showError(c.locale.GetFormatted("number_error", err))
 		return
 	}
 
@@ -118,31 +131,31 @@ func (c *CLI) deleteTask() {
 		return
 	}
 
-	c.showSuccess("Задача успешно удалена!")
+	c.showSuccess(c.locale.Get("task_deleted"))
 }
 
-// editTask обрабатывает редактирование задачи
 func (c *CLI) editTask() {
 	c.listTasks()
 
-	fmt.Print("Введите номер задачи для редактирования: ")
+	fmt.Print(c.locale.Get("enter_task_number"))
 	taskNum, err := c.readInt()
 	if err != nil {
-		c.showError("Ошибка чтения номера:", err)
+		c.showError(c.locale.GetFormatted("number_error", err))
 		return
 	}
 
 	c.showEditSubMenu(taskNum)
 }
 
-//Показывает подменю редактирования конкретной задачи
+// ========== EDIT SUBMENU METHODS ==========
+
 func (c *CLI) showEditSubMenu(taskNum int) {
 	for {
-		fmt.Println("\nЧто вы хотите сделать с задачей?")
-		fmt.Println("1. Изменить текст задачи")
-		fmt.Println("2. Изменить статус задачи")
-		fmt.Println("3. Назад")
-		fmt.Print("Выберите вариант: ")
+		fmt.Printf("\n%s\n", c.locale.Get("edit_submenu_title"))
+		fmt.Println(c.locale.Get("edit_submenu_option1"))
+		fmt.Println(c.locale.Get("edit_submenu_option2"))
+		fmt.Println(c.locale.Get("edit_submenu_option3"))
+		fmt.Print(c.locale.Get("choose_option"))
 
 		switch choice := c.getMenuChoice(); choice {
 		case 1:
@@ -152,19 +165,18 @@ func (c *CLI) showEditSubMenu(taskNum int) {
 		case 3:
 			return
 		default:
-			c.showError("Неверная команда. Попробуйте снова.")
+			c.showError(c.locale.Get("invalid_choice"))
 		}
 	}
 }
 
-// Изменить текст задачи
 func (c *CLI) updateTaskText(taskNum int) {
 
-	fmt.Print("Введите новый текст задачи: ")
+	fmt.Print(c.locale.Get("enter_new_description"))
 
 	taskName, err := c.ReadString()
 	if err != nil {
-		c.showError("Ошибка чтения ввода: ", err)
+		c.showError(c.locale.GetFormatted("input_error", err))
 		return
 	}
 
@@ -173,16 +185,16 @@ func (c *CLI) updateTaskText(taskNum int) {
 		return
 	}
 
-	c.showSuccess("Текст задачи успешно обновлён!")
+	c.showSuccess(c.locale.Get("description_updated"))
 }
 
-// Изменить статус задачи
 func (c *CLI) updateTaskStatus(taskNum int) {
-	fmt.Println("Выберите новый статус:")
-	fmt.Println("1. Не выполнена")
-	fmt.Println("2. В процессе")
-	fmt.Println("3. Выполнена")
-	fmt.Print("Выберите статус: ")
+
+	fmt.Println(c.locale.Get("choose_status"))
+	fmt.Println(c.locale.Get("status_option1"))
+	fmt.Println(c.locale.Get("status_option2"))
+	fmt.Println(c.locale.Get("status_option3"))
+	fmt.Print(c.locale.Get("choose_option"))
 
 	choice := c.getMenuChoice()
 	var newStatus store.TaskStatus
@@ -195,7 +207,7 @@ func (c *CLI) updateTaskStatus(taskNum int) {
 	case 3:
 		newStatus = store.StatusDone
 	default:
-		c.showError("Неверный выбор статуса.")
+		c.showError(c.locale.Get("invalid_status"))
 		return
 	}
 
@@ -204,31 +216,72 @@ func (c *CLI) updateTaskStatus(taskNum int) {
 		return
 	}
 
-	c.showSuccess("Статус задачи успешно изменён!")
+	c.showSuccess(c.locale.Get("status_updated"))
 }
 
-// Показывает приветственное сообщение
-func (c *CLI) showWelcome() {
-	fmt.Printf("\nДобро пожаловать в терминал списка дел.\n")
-	fmt.Printf("Взаимодействуй с терминалом через ввод цифр.\n\n")
+// ========== LANGUAGE SETTINGS METHODS ==========
 
+func (c *CLI) showLanguageMenu() {
+	fmt.Printf("\n%s\n", c.locale.Get("language_menu"))
+	fmt.Printf("%s\n", c.locale.GetFormatted("current_language", c.locale.CurrentLocale()))
+	fmt.Println(c.locale.Get("available_languages"))
+	
+	availableLocales := c.locale.AvailableLocales()
+	for i, lang := range availableLocales {
+		fmt.Printf("%d. %s\n", i+1, lang)
+	}
+	fmt.Print(c.locale.Get("choose_option"))
+
+	choice := c.getMenuChoice()
+	if choice >= 1 && choice <= len(availableLocales) {
+		selectedLang := availableLocales[choice-1]
+		if err := c.locale.SetLocale(selectedLang); err != nil {
+			c.showError(err.Error())
+			return
+		}
+		// Update service locale as well
+		c.service.SetLocale(c.locale)
+		c.showSuccess(c.locale.GetFormatted("language_changed", selectedLang))
+	} else {
+		c.showError(c.locale.Get("invalid_choice"))
+	}
+}
+
+// ========== DISPLAY METHODS ==========
+
+func (c *CLI) showWelcome() {
+	fmt.Printf("\n%s\n", c.locale.Get("welcome"))
+	fmt.Printf("%s\n", c.locale.Get("welcome_description"))
+	fmt.Printf("%s\n\n", c.locale.Get("interaction"))
+	c.showHelp()
+}
+
+func (c *CLI) showHelp() {
+	fmt.Printf("\n%s\n", c.locale.Get("instructions"))
+	fmt.Println(c.locale.Get("help_option_1"))
+	fmt.Println(c.locale.Get("help_option_2"))
+	fmt.Println(c.locale.Get("help_option_3"))
+	fmt.Println(c.locale.Get("help_option_4"))
+	fmt.Println(c.locale.Get("help_option_5"))
+	fmt.Println()
 }
 
 func (c *CLI) listTasks() {
 	tasks := c.service.GetAllTasks()
 	if len(tasks) == 0 {
-		fmt.Println("Список задач пуст.")
+		fmt.Println(c.locale.Get("empty_task_list"))
 		return
 	}
 
-	fmt.Println("\nСписок задача:")
+	fmt.Printf("\n%s\n", c.locale.Get("task_list_title"))
 	for i, task := range tasks {
 		statusText := c.service.GetStatusText(task.Status)
-		fmt.Printf("№%v. [%s]  %s\n", i+1, statusText, task.Task)
+		fmt.Printf(c.locale.Get("task_format")+"\n", i+1, statusText, task.Task)
 	}
+	fmt.Printf(c.locale.Get("task_count")+"\n", len(tasks))
 }
 
-// Вспомогательные методы для ввода/вывода
+// ========== HELPER METHODS ==========
 
 func (c *CLI) getMenuChoice() int {
 	fmt.Print(">")
@@ -239,7 +292,6 @@ func (c *CLI) getMenuChoice() int {
 		c.reader.Discard(c.reader.Buffered())
 	}
 
-	// Валидация
 	if r >= '0' && r <= '9' {
 		return int(r - '0')
 	}
@@ -249,7 +301,7 @@ func (c *CLI) getMenuChoice() int {
 func (c *CLI) ReadString() (string, error) {
 	input, err := c.reader.ReadString('\n')
 	if err != nil && err != io.EOF {
-		return "", fmt.Errorf("ошибка ввода %w", err)
+		return "", fmt.Errorf(c.locale.Get("input_error"), err)
 	}
 	return strings.TrimSpace(input), nil
 }
@@ -261,20 +313,21 @@ func (c *CLI) readInt() (int, error) {
 	}
 	num, err := strconv.Atoi(input)
 	if err != nil {
-		return 0, fmt.Errorf("ошибка конвертации строк %w", err)
+		return 0, fmt.Errorf(c.locale.Get("number_error"), err)
 	}
 	return num, nil
 }
 
-func (c *CLI) showError(message string, args ...any) {
-	fmt.Printf("❌ Ошибка: "+message+"\n", args...)
+func (c *CLI) showError(message string) {
+	fmt.Printf(c.locale.Get("error"), message)
 }
 
 func (c *CLI) showSuccess(message string) {
-	fmt.Printf("✅ %s\n", message)
+	fmt.Printf(c.locale.Get("success"), message)
+	fmt.Println("")
 }
 
 func (c *CLI) exit() error {
-	fmt.Println("До свидания!")
+	fmt.Println(c.locale.Get("goodbye"))
 	return nil
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"ToDoList/locale"
 	"ToDoList/cli"
 	"ToDoList/service"
 	"ToDoList/store"
@@ -13,36 +14,40 @@ import (
 )
 
 func main() {
-	// Инициализация хранилища и сервиса
+	// Initialize locale manager
+	localeManager := locale.NewManager()
+
+	// Initialize storage and service
 	taskStore := store.NewJSONFileStore(store.StorageFileName)
-	taskService, err := service.NewTaskService(taskStore)
+	taskService, err := service.NewTaskService(taskStore, localeManager)
 	if err != nil {
-		log.Fatal("Ошибка при создании сервиса задач:", err)
+		log.Fatal(localeManager.GetFormatted("service_init_error", err))
 	}
 
-	// Обработка сигналов для graceful shutdown
-	setupSignalHandling(taskService)
+	// Signal handling for graceful shutdown
+	setupSignalHandling(taskService, localeManager)
 
-	// Инициализация и запуск CLI
+
+	// Initialize and run CLI
 	reader := bufio.NewReader(os.Stdin)
-	appCLI := cli.NewCLI(taskService, reader)
+	appCLI := cli.NewCLI(taskService, reader, localeManager)
 
 	if err := appCLI.Run(); err != nil {
-		log.Fatal("Ошибка при работе приложения", err)
+		log.Fatal(localeManager.GetFormatted("service_init_error", err))
 	}
 }
 
-func setupSignalHandling(service *service.TaskService) {
+func setupSignalHandling(service *service.TaskService, localeManager *locale.Manager) {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
 		<-sigChan
-		fmt.Println("\nПолучен сигнал завершения. Сохраняем данные...")
-		// Данные сохраняются автоматически при каждом изменении
-		// Но на всякий случай можно вызвать явное сохранение
+		fmt.Printf("\n%s\n", localeManager.Get("signal_received"))
+		// Data is saved automatically with every change
+		// But we call explicit save just in case
 		if err := service.Store.Save(service.Tasks); err != nil {
-			fmt.Println("Ошибка сохранения файла:", err)
+			fmt.Printf(localeManager.Get("file_save_error"), err)
 		}
 		os.Exit(0)
 	}()
