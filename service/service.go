@@ -25,7 +25,7 @@ func NewTaskService(store store.TaskStore, localeManager *locale.Manager) (*Task
 	// We don't know what's under the hood in store.Load(), we just want tasks
 	tasks, err := store.Load()
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", localeManager.Get("file_load_error"), err)
+		return nil, fmt.Errorf(localeManager.Get("file_load_error"), err)
 	}
 	return &TaskService{
 		Store:  store, // We save interface, not implementation
@@ -38,7 +38,7 @@ func (t *TaskService) CreateTask(name string) error {
 
 	// 1. Validation
 	if err := t.validateTaskName(name); err != nil {
-		return fmt.Errorf("%s: %w", t.locale.Get("validation_error"), err)
+		return fmt.Errorf(t.locale.Get("validation_error"), err)
 	}
 
 	// 2. Add task to local list
@@ -50,7 +50,7 @@ func (t *TaskService) CreateTask(name string) error {
 	// 3. Save through interface
 	if err := t.Store.Save(t.Tasks); err != nil {
 		// Wrap store error with localized message
-		return fmt.Errorf("%s: %w", t.locale.Get("file_save_error"), err)
+		return fmt.Errorf(t.locale.Get("file_save_error"), err)
 	}
 	return nil
 }
@@ -60,7 +60,7 @@ func (t *TaskService) DeleteTask(num int) error {
 
 	// Validation
 	if err := t.validateTaskNumber(num); err != nil {
-		return fmt.Errorf("%s: %w", t.locale.Get("validation_error"), err)
+		return fmt.Errorf(t.locale.Get("validation_error"), err)
 	}
 
 
@@ -70,7 +70,7 @@ func (t *TaskService) DeleteTask(num int) error {
 	// 3. Save through interface
 	if err := t.Store.Save(t.Tasks); err != nil {
 		// Wrap store error with localized message
-		return fmt.Errorf("%s: %w", t.locale.Get("file_save_error"), err)
+		return fmt.Errorf(t.locale.Get("file_save_error"), err)
 	}
 	return nil
 }
@@ -80,11 +80,11 @@ func (t *TaskService) UpdateTask(num int, name string) error {
 
 	// 1. Validation
 	if err := t.validateTaskNumber(num); err != nil {
-		return fmt.Errorf("%s: %w", t.locale.Get("validation_error"), err)
+		return fmt.Errorf(t.locale.Get("validation_error"), err)
 	}
 
 	if err := t.validateTaskName(name); err != nil {
-		return fmt.Errorf("%s: %w", t.locale.Get("validation_error"), err)
+		return fmt.Errorf(t.locale.Get("validation_error"), err)
 	}
 
 	// 2. Find task and update description
@@ -93,7 +93,7 @@ func (t *TaskService) UpdateTask(num int, name string) error {
 	// 3. Save through interface
 	if err := t.Store.Save(t.Tasks); err != nil {
 		// Wrap store error with localized message
-		return fmt.Errorf("%s: %w", t.locale.Get("file_save_error"), err)
+		return fmt.Errorf(t.locale.Get("file_save_error"), err)
 	}
 	return nil
 }
@@ -103,7 +103,7 @@ func (t *TaskService) UpdateTaskStatus(num int, statusCode store.TaskStatus) err
 
 	// 1. Validation
 	if err := t.validateTaskNumber(num); err != nil {
-		return fmt.Errorf("%s: %w", t.locale.Get("validation_error"), err)
+		return fmt.Errorf(t.locale.Get("validation_error"), err)
 	}
 
 	// 2. Find task and update status
@@ -112,7 +112,7 @@ func (t *TaskService) UpdateTaskStatus(num int, statusCode store.TaskStatus) err
 	// 3. Save through interface
 	if err := t.Store.Save(t.Tasks); err != nil {
 		// Wrap store error with localized message
-		return fmt.Errorf("%s: %w", t.locale.Get("file_save_error"), err)
+		return fmt.Errorf(t.locale.Get("file_save_error"), err)
 	}
 	return nil
 }
@@ -161,7 +161,6 @@ func (t *TaskService) SetLocale(localeManager *locale.Manager) {
 // SaveTasks allows explicit saving of tasks (useful for signal handling)
 func (t *TaskService) SaveTasks() error {
 	if err := t.Store.Save(t.Tasks); err != nil {
-		// ПРАВИЛЬНО: формат-строка + аргумент
 		return fmt.Errorf(t.locale.Get("service_save_error"), err)
 	}
 	return nil

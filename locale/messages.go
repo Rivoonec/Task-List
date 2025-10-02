@@ -10,7 +10,7 @@ func English() *Locale {
             "app_version":     "1.0.0",
             
             // ========== COMMON UI ELEMENTS ==========
-            "error":           "❌ Error: %w",
+            "error":           "❌ Error: %s",
             "success":         "✅ %s",
             "info":            "ℹ️ %s",
             "warning":         "⚠️ %s",
@@ -75,9 +75,9 @@ func English() *Locale {
             
             // ========== STATUS MANAGEMENT SECTION ==========
             "choose_status":         "Choose new status:",
-            "status_option1":        "1. Not done",
-            "status_option2":        "2. In progress",
-            "status_option3":        "3. Done",
+            "status_option1":        "1. 🔴 Not done",
+            "status_option2":        "2. 🟡 In progress",
+            "status_option3":        "3. 🟢 Done",
             "invalid_status":        "Invalid status choice.",
             "status_updated":        "Task status successfully changed!",
             "description_updated":   "Task description successfully updated!",
@@ -122,7 +122,7 @@ func Russian() *Locale {
             "app_version":     "1.0.0",
             
             // ========== COMMON UI ELEMENTS ==========
-            "error":           "❌ Ошибка: %w",
+            "error":           "❌ Ошибка: %s",
             "success":         "✅ %s",
             "info":            "ℹ️ %s",
             "warning":         "⚠️ %s",

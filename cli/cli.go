@@ -126,6 +126,16 @@ func (c *CLI) deleteTask() {
 		return
 	}
 
+	task := tasks[taskNum-1]
+
+	fmt.Printf(c.locale.Get("confirm_delete"), task.Task)
+
+	confirm, _ := c.ReadString()
+	if strings.ToLower(confirm) != "y" {
+	    c.showSuccess(c.locale.Get("deletion_cancelled"))
+	    return
+	}
+
 	if err := c.service.DeleteTask(taskNum); err != nil {
 		c.showError(err.Error())
 		return
