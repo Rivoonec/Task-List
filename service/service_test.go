@@ -20,75 +20,203 @@ func (s *InMemoryStore) Load() ([]store.Task, error) {
 	return s.tasks, nil
 }
 
-// Вспомогательная функция для создания TaskService в тестах
-func newTestService() (*TaskService, error) {
-	lm := locale.NewManager()
-	lm.SetLocale("en") // используем английский — он точно есть
+func TestTaskService_CreateTask(t *testing.T) {
+	testLocaleManager := locale.NewManager()
 
-	store := &InMemoryStore{}
-	return NewTaskService(store, lm)
+	tests := []struct {
+		name string // description of this test case
+		// Named input parameters for receiver constructor.
+		store         store.TaskStore
+		localeManager *locale.Manager
+		// Named input parameters for target function.
+		taskName    string
+		wantErr bool
+	}{
+		{
+			name:"Empty name - should fail validation",
+			store:&InMemoryStore{},
+			localeManager: testLocaleManager,
+			taskName: "",
+			wantErr: true,
+		},
+		{
+			name:"Invalid(short) name - should fail validation",
+			store:&InMemoryStore{},
+			localeManager: testLocaleManager,
+			taskName: "ab",
+			wantErr: true,
+		},
+		{
+			name:"Valid name - should succeed",
+			store:&InMemoryStore{},
+			localeManager: testLocaleManager,
+			taskName: "test",
+			wantErr: false,
+		},
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ta, err := NewTaskService(tt.store, tt.localeManager)
+			if err != nil {
+				t.Fatalf("could not construct receiver type: %v", err)
+			}
+			gotErr := ta.CreateTask(tt.taskName)
+			if gotErr != nil {
+				if !tt.wantErr {
+					t.Errorf("CreateTask() error = %v, wantErr %v", gotErr, tt.wantErr)
+				}
+				return
+			}
+			
+			if tt.wantErr {
+				t.Fatal("CreateTask() succeeded unexpectedly")
+			}
+		})
+	}
 }
 
-// Тест: добавление задачи с валидным описанием (≥3 символов)
-func TestAddTask_Valid(t *testing.T) {
-	service, _ := newTestService()
+func TestTaskService_DeleteTask(t *testing.T) {
+	testLocaleManager := locale.NewManager()
+	tests := []struct {
+		name string // description of this test case
+		// Named input parameters for receiver constructor.
+		initialTasks  []store.Task // to init inmemory store
+		localeManager *locale.Manager
+		// Named input parameters for target function.
+		num     int
+		wantErr bool
+		expectedTasks []store.Task // if no err
+	}{
+		{
+			name:"Num out of slice - too high - should fail validation",
+			initialTasks: []store.Task{
+					{Task: "first", Status: store.StatusDone},
+					{Task: "second", Status: store.StatusNotDone},
+			},
+			localeManager: testLocaleManager,
+			num: 3,
+			wantErr: true,
+			expectedTasks: nil,
+		},
+		{
+			name:"Num out of slice - too low (0) - should fail validation",
+			initialTasks: []store.Task{
+					{Task: "first", Status: store.StatusDone},
+					{Task: "second", Status: store.StatusNotDone},
+			},
+			localeManager: testLocaleManager,
+			num: 0,
+			wantErr: true,
+			expectedTasks: nil,
+		},
+		{
+			name:"Valid num - should succeed",
+			initialTasks: []store.Task{
+					{Task: "first", Status: store.StatusDone},
+					{Task: "second", Status: store.StatusNotDone},
+			},
+			localeManager: testLocaleManager,
+			num: 1,
+			wantErr: false,
+			expectedTasks: []store.Task{
+					{Task: "second", Status: store.StatusNotDone},
+			},
+		},
+		{
+			name: "Delete only task - should succeed",
+			initialTasks: []store.Task{
+				{Task: "only", Status: store.StatusNotDone},
+			},
+			num:       1, 
+			wantErr:       false,
+			expectedTasks: []store.Task{},
+		},
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			inMemoryStore := &InMemoryStore{tasks: tt.initialTasks}
+			ta, err := NewTaskService(inMemoryStore, tt.localeManager)
+			if err != nil {
+				t.Fatalf("could not construct receiver type: %v", err)
+			}
+			gotErr := ta.DeleteTask(tt.num)
+			if gotErr != nil {
+				if !tt.wantErr {
+					t.Errorf("DeleteTask(%d) error = %v, wantErr %v", tt.num, gotErr, tt.wantErr)
+				}
+				return
+			}
 
-	err := service.CreateTask("Buy groceries")
-	if err != nil {
-		t.Fatalf("Expected no error for valid task, got: %v", err)
-	}
+			if tt.wantErr {
+				t.Fatal("DeleteTask() succeeded unexpectedly")
+			}
 
-	tasks := service.GetAllTasks()
-	if len(tasks) != 1 {
-		t.Fatalf("Expected 1 task, got %d", len(tasks))
-	}
-	if tasks[0].Task != "Buy groceries" {
-		t.Errorf("Expected task text 'Buy groceries', got %q", tasks[0].Task)
-	}
-	if tasks[0].Status != 0 {
-		t.Errorf("Expected status 0 (Not Done), got %d", tasks[0].Status)
+			// Если ошибка не ожидалась, проверим результат
+			if !tt.wantErr {
+				// Проверяем длину списка задач в сервисе
+				if len(ta.Tasks) != len(tt.expectedTasks) {
+					t.Errorf("DeleteTask(%d) resulted in %d tasks, expected %d", tt.num, len(ta.Tasks), len(tt.expectedTasks))
+					return // Если длина не совпадает, дальше проверять бессмысленно
+				}
+
+				// Проверяем содержимое списка задач в сервисе поэлементно
+				for i, expectedTask := range tt.expectedTasks {
+					if i >= len(ta.Tasks) {
+						// Это условие не должно сработать, если длина совпала, но на всякий случай
+						t.Errorf("DeleteTask(%d) - index %d out of bounds in actual tasks", tt.num, i)
+						break
+					}
+					actualTask := ta.Tasks[i]
+					if actualTask.Task != expectedTask.Task || actualTask.Status != expectedTask.Status {
+						t.Errorf("DeleteTask(%d) - task at index %d mismatch: got {Task: %s, Status: %v}, want {Task: %s, Status: %v}", 
+							tt.num, i, actualTask.Task, actualTask.Status, expectedTask.Task, expectedTask.Status)
+					}
+				}
+
+				// Проверяем длину списка задач, возвращаемого GetAllTasks
+			    allTasks := ta.GetAllTasks() // Вызываем тестируемый метод
+			    if len(allTasks) != len(tt.expectedTasks) {
+			        t.Errorf("DeleteTask(%d) - GetAllTasks() returned %d tasks, expected %d", tt.num, len(allTasks), len(tt.expectedTasks))
+			        return // Если длина не совпадает, дальше проверять бессмысленно
+			    }
+			
+			    // Проверяем содержимое списка задач, возвращаемого GetAllTasks, поэлементно
+			    for i, expectedTask := range tt.expectedTasks {
+			        if i >= len(allTasks) {
+			            // Это условие не должно сработать, если длина совпала, но на всякий случай
+			            t.Errorf("DeleteTask(%d) - index %d out of bounds in GetAllTasks() result", tt.num, i)
+			            break
+			        }
+			        actualTaskFromGetAll := allTasks[i]
+			        if actualTaskFromGetAll.Task != expectedTask.Task || actualTaskFromGetAll.Status != expectedTask.Status {
+			            t.Errorf("DeleteTask(%d) - task at index %d from GetAllTasks() mismatch: got {Task: %s, Status: %v}, want {Task: %s, Status: %v}", 
+			                tt.num, i, actualTaskFromGetAll.Task, actualTaskFromGetAll.Status, expectedTask.Task, expectedTask.Status)
+			        }
+			    }
+
+				// Проверяем длину списка задач в хранилище
+				if len(inMemoryStore.tasks) != len(tt.expectedTasks) {
+					t.Errorf("DeleteTask(%d) - store has %d tasks after Save, expected %d", tt.num, len(inMemoryStore.tasks), len(tt.expectedTasks))
+					return // Если длина не совпадает, дальше проверять бессмысленно
+				}
+
+				// Проверяем содержимое списка задач в хранилище поэлементно
+				for i, expectedTask := range tt.expectedTasks {
+					if i >= len(inMemoryStore.tasks) {
+						// Это условие не должно сработать, если длина совпала, но на всякий случай
+						t.Errorf("DeleteTask(%d) - index %d out of bounds in store tasks", tt.num, i)
+						break
+					}
+					actualTaskInStore := inMemoryStore.tasks[i]
+					if actualTaskInStore.Task != expectedTask.Task || actualTaskInStore.Status != expectedTask.Status {
+						t.Errorf("DeleteTask(%d) - task at index %d in store mismatch: got {Task: %s, Status: %v}, want {Task: %s, Status: %v}", 
+							tt.num, i, actualTaskInStore.Task, actualTaskInStore.Status, expectedTask.Task, expectedTask.Status)
+					}
+				}
+			}
+		})
 	}
 }
 
-// Тест: добавление задачи с коротким описанием (<3 символов) → ошибка
-func TestAddTask_TooShort(t *testing.T) {
-	service, _ := newTestService()
-
-	err := service.CreateTask("Hi")
-	if err == nil {
-		t.Error("Expected error for short task description, got none")
-	}
-}
-
-
-// func TestTaskService_CreateTask(t *testing.T) {
-// 	tests := []struct {
-// 		name string // description of this test case
-// 		// Named input parameters for receiver constructor.
-// 		store         store.TaskStore
-// 		localeManager *locale.Manager
-// 		// Named input parameters for target function.
-// 		name    string
-// 		wantErr bool
-// 	}{
-// 		// TODO: Add test cases.
-// 	}
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			ta, err := NewTaskService(tt.store, tt.localeManager)
-// 			if err != nil {
-// 				t.Fatalf("could not construct receiver type: %v", err)
-// 			}
-// 			gotErr := ta.CreateTask(tt.name)
-// 			if gotErr != nil {
-// 				if !tt.wantErr {
-// 					t.Errorf("CreateTask() failed: %v", gotErr)
-// 				}
-// 				return
-// 			}
-// 			if tt.wantErr {
-// 				t.Fatal("CreateTask() succeeded unexpectedly")
-// 			}
-// 		})
-// 	}
-// }

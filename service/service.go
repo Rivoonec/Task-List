@@ -9,13 +9,12 @@ import (
 	"unicode/utf8"
 )
 
-
 type TaskService struct {
 	// store is NOT a concrete implementation, but an INTERFACE
 	// This is a contract that guarantees
 	// that store has Load() and Save() methods
-	Store store.TaskStore
-	Tasks []store.Task
+	Store  store.TaskStore
+	Tasks  []store.Task
 	locale *locale.Manager
 }
 
@@ -62,7 +61,6 @@ func (t *TaskService) DeleteTask(num int) error {
 	if err := t.validateTaskNumber(num); err != nil {
 		return fmt.Errorf(t.locale.Get("validation_error"), err)
 	}
-
 
 	// Direct access to element (without loop)
 	t.Tasks = append(t.Tasks[:num], t.Tasks[num+1:]...)
@@ -118,16 +116,16 @@ func (t *TaskService) UpdateTaskStatus(num int, statusCode store.TaskStatus) err
 }
 
 func (t *TaskService) GetStatusText(status store.TaskStatus) string {
-		switch status {
-		case store.StatusNotDone:
-			return t.locale.Get("status_option1")
-		case store.StatusInProgress:
-			return t.locale.Get("status_option2")
-		case store.StatusDone:
-			return t.locale.Get("status_option3")
-		default:
-			return "Unknown"
-		}
+	switch status {
+	case store.StatusNotDone:
+		return t.locale.Get("status_option1")
+	case store.StatusInProgress:
+		return t.locale.Get("status_option2")
+	case store.StatusDone:
+		return t.locale.Get("status_option3")
+	default:
+		return "Unknown"
+	}
 }
 
 func (t *TaskService) GetAllTasks() []store.Task {
@@ -136,21 +134,21 @@ func (t *TaskService) GetAllTasks() []store.Task {
 
 // Separate validation methods
 func (t *TaskService) validateTaskNumber(num int) error {
-    if num < 0 || num >= len(t.Tasks) {
+	if num < 0 || num >= len(t.Tasks) {
 		return fmt.Errorf("%s: %d", t.locale.Get("task_validation_number"), num+1)
-    }
-    return nil
+	}
+	return nil
 }
 
 func (t *TaskService) validateTaskName(name string) error {
-    name = strings.TrimSpace(name)
-    if name == "" {
+	name = strings.TrimSpace(name)
+	if name == "" {
 		return errors.New(t.locale.Get("task_validation_empty"))
-    }
-    if utf8.RuneCountInString(name) < 3 {
+	}
+	if utf8.RuneCountInString(name) < 3 {
 		return errors.New(t.locale.Get("task_validation_short"))
-    }
-    return nil
+	}
+	return nil
 }
 
 // SetLocale allows changing locale at runtime
