@@ -1,8 +1,8 @@
 package main
 
 import (
-	"ToDoList/locale"
 	"ToDoList/cli"
+	"ToDoList/locale"
 	"ToDoList/service"
 	"ToDoList/store"
 	"bufio"
@@ -26,7 +26,6 @@ func main() {
 
 	// Signal handling for graceful shutdown
 	setupSignalHandling(taskService, localeManager)
-
 
 	// Initialize and run CLI
 	reader := bufio.NewReader(os.Stdin)

@@ -14,7 +14,7 @@ import (
 type CLI struct {
 	service *service.TaskService
 	reader  *bufio.Reader
-	locale *locale.Manager
+	locale  *locale.Manager
 }
 
 func NewCLI(service *service.TaskService, reader *bufio.Reader, localeManager *locale.Manager) *CLI {
@@ -111,11 +111,11 @@ func (c *CLI) createTask() {
 
 func (c *CLI) deleteTask() {
 
-    tasks := c.service.GetAllTasks()
-    if len(tasks) == 0 {
+	tasks := c.service.GetAllTasks()
+	if len(tasks) == 0 {
 		c.showError(c.locale.Get("no_tasks_to_delete"))
-        return 
-    }
+		return
+	}
 
 	c.listTasks()
 
@@ -132,8 +132,8 @@ func (c *CLI) deleteTask() {
 
 	confirm, _ := c.ReadString()
 	if strings.ToLower(confirm) != "y" {
-	    c.showSuccess(c.locale.Get("deletion_cancelled"))
-	    return
+		c.showSuccess(c.locale.Get("deletion_cancelled"))
+		return
 	}
 
 	if err := c.service.DeleteTask(taskNum); err != nil {
@@ -235,7 +235,7 @@ func (c *CLI) showLanguageMenu() {
 	fmt.Printf("\n%s\n", c.locale.Get("language_menu"))
 	fmt.Printf("%s\n", c.locale.GetFormatted("current_language", c.locale.CurrentLocale()))
 	fmt.Println(c.locale.Get("available_languages"))
-	
+
 	availableLocales := c.locale.AvailableLocales()
 	for i, lang := range availableLocales {
 		fmt.Printf("%d. %s\n", i+1, lang)
